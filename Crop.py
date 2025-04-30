@@ -6,7 +6,7 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 import os
 
-# Укажи путь к Tesseract, если нужно
+# Specify the path to Tesseract if needed
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 points = []
@@ -42,7 +42,7 @@ def click_event(event, x, y, flags, param):
             points.append((x, y))
             cv2.circle(param, (x, y), 5, (0, 255, 0), -1)
             cv2.putText(param, f"{len(points)}", (x+5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
-            cv2.imshow("Выделите документ (4 точки)", param)
+            cv2.imshow("Select the document (4 points)", param)
 
 def preprocess_for_ocr(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -58,9 +58,9 @@ def manual_crop(image_path, original_image):
     points = []
 
     clone = original_image.copy()
-    cv2.imshow("Выделите документ (4 точки)", clone)
-    cv2.setMouseCallback("Выделите документ (4 точки)", click_event, clone)
-    print("🖱 Кликните 4 угла документа слева направо по часовой (или против часовой)")
+    cv2.imshow("Select the document (4 points)", clone)
+    cv2.setMouseCallback("Select the document (4 points)", click_event, clone)
+    print("Click on the 4 corners of the document clockwise or counterclockwise")
 
     while True:
         key = cv2.waitKey(1) & 0xFF
@@ -70,7 +70,7 @@ def manual_crop(image_path, original_image):
     cv2.destroyAllWindows()
 
     if len(points) != 4:
-        print("❌ Выбрано недостаточно точек.")
+        print("Not enough points selected.")
         return None, None
 
     pts = np.array(points, dtype="float32")
@@ -84,7 +84,7 @@ def manual_crop(image_path, original_image):
             with open(output_path, 'wb') as f:
                 f.write(buffer)
     except Exception as e:
-        print(f"⚠️ Ошибка при сохранении: {e}")
+        print(f"Error saving file: {e}")
 
     return output_path, cropped
 
@@ -92,7 +92,7 @@ def recognize_and_translate(image, output_base_path):
     preprocessed = preprocess_for_ocr(image)
     text = pytesseract.image_to_string(preprocessed, lang='eng')
     original = text.strip()
-    print("\n📜 Распознанный текст:\n", original)
+    print("\nRecognized text:\n", original)
 
     original_txt = output_base_path + "_original_text.txt"
     translated_txt = output_base_path + "_translated_text.txt"
@@ -100,7 +100,7 @@ def recognize_and_translate(image, output_base_path):
     if original:
         try:
             translated = GoogleTranslator(source='auto', target='ru').translate(original)
-            print("\n📘 Перевод:\n", translated.strip())
+            print("\nTranslation:\n", translated.strip())
 
             with open(original_txt, "w", encoding="utf-8") as f:
                 f.write(original)
@@ -108,35 +108,35 @@ def recognize_and_translate(image, output_base_path):
             with open(translated_txt, "w", encoding="utf-8") as f:
                 f.write(translated.strip())
 
-            print(f"\n💾 Сохранено:")
-            print(f" - Оригинал: {original_txt}")
-            print(f" - Перевод: {translated_txt}")
+            print("Saved:")
+            print(f" - Original: {original_txt}")
+            print(f" - Translation: {translated_txt}")
 
         except Exception as e:
-            print(f"\n⚠️ Ошибка перевода: {e}")
+            print(f"Translation error: {e}")
     else:
-        print("⚠️ Текст не распознан.")
+        print("No text recognized.")
 
 def main():
     Tk().withdraw()
     image_path = askopenfilename(
-        title="Выберите изображение документа",
+        title="Select a document image",
         filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
     )
 
     if not image_path:
-        print("❌ Файл не выбран.")
+        print("No file selected.")
         return
 
-    print(f"📂 Выбран файл: {image_path}")
+    print(f"Selected file: {image_path}")
     try:
         image = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
     except Exception as e:
-        print(f"❌ Ошибка при чтении изображения: {e}")
+        print(f"Error reading image: {e}")
         return
 
     if image is None:
-        print("❌ Не удалось загрузить изображение.")
+        print("Failed to load image.")
         return
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -157,12 +157,12 @@ def main():
     if screenCnt is not None:
         auto_crop = four_point_transform(image, screenCnt)
         preview = auto_crop.copy()
-        cv2.imshow("Автообрезка - Enter для продолжения, R - ручной режим", preview)
+        cv2.imshow("Auto crop - Press Enter to continue, R for manual mode", preview)
         key = cv2.waitKey(0) & 0xFF
         cv2.destroyAllWindows()
 
         if key == ord('r'):
-            print("🔁 Переход в ручной режим...")
+            print("Switching to manual mode...")
             cropped_path, cropped_img = manual_crop(image_path, image)
         else:
             cropped_img = auto_crop
@@ -173,17 +173,17 @@ def main():
                 with open(cropped_path, 'wb') as f:
                     f.write(buffer)
     else:
-        print("⚠️ Автообрезка не удалась. Переход в ручной режим...")
+        print("Auto crop failed. Switching to manual mode...")
         cropped_path, cropped_img = manual_crop(image_path, image)
 
     if cropped_img is not None:
         recognize_and_translate(cropped_img, cropped_path.rsplit('.', 1)[0])
-        cv2.imshow("📄 Конечный результат", cropped_img)
+        cv2.imshow("Final Result", cropped_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        print(f"\n✅ Документ сохранён: {cropped_path}")
+        print(f"Document saved: {cropped_path}")
     else:
-        print("❌ Операция отменена.")
+        print("Operation canceled.")
 
 if __name__ == "__main__":
     main()
